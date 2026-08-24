@@ -1,0 +1,17 @@
+reviveai:
+  demo:
+    enabled: false
+    # In production mode, delays are expressed in hours by the scheduling
+    # layer rather than seconds; these second-based values are ignored
+    # when reviveai.demo.enabled=false.
+    retry-delay-seconds: 86400
+    reminder-delay-seconds: 43200
+
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.reviveai: INFO
+    root: WARN

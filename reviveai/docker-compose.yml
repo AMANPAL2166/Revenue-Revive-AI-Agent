@@ -1,0 +1,29 @@
+version: "3.9"
+
+# Day 1 scope: Postgres only, so the backend has something to connect to
+# while entities/repositories are built and verified locally.
+# The `backend` and `frontend` services (with their Dockerfiles) are added
+# in the Day 10 phase per the implementation sequence, turning this into
+# the full `docker compose up` one-command setup.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reviveai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-reviveai}
+      POSTGRES_USER: ${POSTGRES_USER:-reviveai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - reviveai_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reviveai} -d ${POSTGRES_DB:-reviveai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  reviveai_pg_data:

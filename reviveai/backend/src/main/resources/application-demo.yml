@@ -1,0 +1,13 @@
+reviveai:
+  demo:
+    enabled: true
+    retry-delay-seconds: 30
+    reminder-delay-seconds: 20
+
+spring:
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.reviveai: DEBUG

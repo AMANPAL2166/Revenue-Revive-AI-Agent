@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: reviveai-backend
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/reviveai}
+    username: ${DATABASE_USERNAME:reviveai}
+    password: ${DATABASE_PASSWORD:changeme}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # ddl-auto=update is a pragmatic MVP choice for a 10-day buildathon.
+      # A real production setup should replace this with Flyway/Liquibase
+      # migrations (see README "Future Improvements").
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+# --- ReviveAI custom configuration ---
+reviveai:
+  demo:
+    enabled: ${DEMO_MODE:true}
+    retry-delay-seconds: ${DEMO_RETRY_DELAY_SECONDS:30}
+    reminder-delay-seconds: ${DEMO_REMINDER_DELAY_SECONDS:20}
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+  llm:
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:claude-sonnet-4-6}
+  policy:
+    max-discount-percent: 10
+    max-automatic-refund-amount: 2000
+    max-payment-retries: 3
+    high-value-payment-threshold: 50000
+    high-value-actions-require-human-approval: true
+    refund-requires-human-approval: true
+
+logging:
+  level:
+    com.reviveai: INFO
+    org.hibernate.SQL: WARN
