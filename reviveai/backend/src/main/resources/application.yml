@@ -3,10 +3,10 @@ spring:
     name: reviveai-backend
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/reviveai}
-    username: ${DATABASE_USERNAME:reviveai}
-    password: ${DATABASE_PASSWORD:changeme}
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:mysql://localhost:3306/reviveai
+    username: reviveai
+    password: changeme
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
