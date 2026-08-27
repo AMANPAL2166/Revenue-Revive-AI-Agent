@@ -58,10 +58,11 @@ public class WebhookProcessingService {
             webhookEventRepository.save(event);
             return handled ? Outcome.PROCESSED : Outcome.IGNORED_UNHANDLED;
         } catch (Exception e) {
-            // Event row stays persisted with processed=false; safe to
-            // inspect or replay later rather than silently dropping it.
-            log.error("Failed to process webhook event {} ({}): {}", externalEventId, eventType, e.getMessage(), e);
-            throw e;
+            log.error("Failed to process webhook event {} ({}): {}",
+                    externalEventId, eventType, e.getMessage(), e);
+
+            throw new IllegalStateException(
+                    "Failed to process webhook event " + externalEventId, e);
         }
     }
 

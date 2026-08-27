@@ -17,6 +17,11 @@ public interface RecoveryCaseRepository extends JpaRepository<RecoveryCase, UUID
 
     List<RecoveryCase> findByCustomerId(UUID customerId);
 
+    boolean existsByCustomerIdAndStatus(
+            UUID customerId,
+            RecoveryCaseStatus status
+    );
+
     /**
      * Used by RecoveryService before creating a new case for a payment, to
      * avoid opening a second concurrent case for the same failed payment
