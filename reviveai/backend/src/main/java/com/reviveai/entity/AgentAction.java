@@ -75,6 +75,20 @@ public class AgentAction {
     @Column(name = "executed_at")
     private Instant executedAt;
 
+    /**
+     * Deviation from the spec's original AgentAction field list: these two
+     * columns aren't enumerated there, but OFFER_DISCOUNT and RETRY_PAYMENT
+     * genuinely need to carry the AI's structured decision (discount %,
+     * suggested delay) through from analysis to execution — including
+     * across a human approve/reject round-trip, where it can't just live
+     * in memory. Nullable; only populated when relevant to the action.
+     */
+    @Column(name = "discount_percent")
+    private Integer discountPercent;
+
+    @Column(name = "suggested_delay_hours")
+    private Integer suggestedDelayHours;
+
     @PrePersist
     protected void onCreate() {
         if (this.proposedAt == null) {

@@ -76,19 +76,49 @@ public class PaymentService {
         payment.setFailureReason(errorDescription);
 
         Payment saved = paymentRepository.save(payment);
+        applyCustomerStatsTransition(customer, previousStatus, newStatus, amount);
 
-        // Only move customer aggregate stats the first time a payment
-        // reaches a given terminal state, to avoid double-counting if the
-        // same (non-duplicate) payment goes through multiple distinct
-        // webhook events on its way to that state.
+        log.info("Payment {} upserted: {} -> {}", externalPaymentId, previousStatus, newStatus);
+        return saved;
+    }
+
+    /**
+     * Used by RecoveryActionExecutor's RETRY_PAYMENT simulation adapter to
+     * apply a retry outcome without going through the Razorpay webhook
+     * payload shape (there's no real webhook payload for a simulated
+     * event). Deliberately separate from upsertFromRazorpayPayload so this
+     * class never has to fabricate a fake Razorpay JSON structure just to
+     * reuse the same code path.
+     */
+    @Transactional
+    public Payment applySimulatedOutcome(UUID paymentId, boolean succeeded, String failureReason) {
+        Payment payment = getById(paymentId);
+        PaymentStatus previousStatus = payment.getStatus();
+        PaymentStatus newStatus = succeeded ? PaymentStatus.SUCCESS : PaymentStatus.FAILED;
+
+        payment.setStatus(newStatus);
+        payment.setFailureReason(succeeded ? null : failureReason);
+        Payment saved = paymentRepository.save(payment);
+
+        applyCustomerStatsTransition(payment.getCustomer(), previousStatus, newStatus, payment.getAmount());
+
+        log.info("Simulated retry outcome applied to payment {}: {} -> {}",
+                payment.getExternalPaymentId(), previousStatus, newStatus);
+        return saved;
+    }
+
+    /**
+     * Only moves customer aggregate stats the first time a payment reaches
+     * a given terminal state, to avoid double-counting if the same
+     * (non-duplicate) payment goes through multiple distinct status
+     * transitions on its way there.
+     */
+    private void applyCustomerStatsTransition(Customer customer, PaymentStatus previousStatus, PaymentStatus newStatus, BigDecimal amount) {
         if (previousStatus != PaymentStatus.SUCCESS && newStatus == PaymentStatus.SUCCESS) {
             customerService.recordSuccessfulPayment(customer, amount);
         } else if (previousStatus != PaymentStatus.FAILED && newStatus == PaymentStatus.FAILED) {
             customerService.recordFailedPayment(customer);
         }
-
-        log.info("Payment {} upserted: {} -> {}", externalPaymentId, previousStatus, newStatus);
-        return saved;
     }
 
     @Transactional

@@ -2,6 +2,7 @@ package com.reviveai.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.reviveai.entity.Payment;
 import com.reviveai.entity.WebhookEvent;
 import com.reviveai.repository.WebhookEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,20 +21,18 @@ public class WebhookProcessingService {
 
     private final WebhookEventRepository webhookEventRepository;
     private final PaymentService paymentService;
+    private final RecoveryService recoveryService;
+    private final PaymentOutcomeService paymentOutcomeService;
     private final ObjectMapper objectMapper;
 
     public enum Outcome { PROCESSED, IGNORED_DUPLICATE, IGNORED_UNHANDLED }
 
     /**
      * Entry point for the webhook pipeline. The idempotency check, event
-     * storage, and payment/customer state updates all happen inside one
-     * transaction, so a crash mid-processing cannot leave a WebhookEvent
-     * marked "received" without its downstream effects (or vice versa).
-     *
-     * Day 3+ hook point: once RevenueRiskService exists, a payment
-     * transitioning to FAILED here is where RecoveryCase creation gets
-     * triggered. Left out of this method for now to keep Day 2's
-     * transaction boundary focused on ingestion + payment/customer state.
+     * storage, and payment/customer/recovery-case state updates all happen
+     * inside one transaction, so a crash mid-processing cannot leave a
+     * WebhookEvent marked "received" without its downstream effects (or
+     * vice versa).
      */
     @Transactional
     public Outcome processEvent(String externalEventId, String eventType, String rawPayload) {
@@ -70,7 +69,9 @@ public class WebhookProcessingService {
         if (eventType == null) {
             return false;
         }
-        JsonNode paymentEntity = root.path("payload").path("payment").path("entity");
+
+        JsonNode paymentEntity =
+                root.path("payload").path("payment").path("entity");
 
         return switch (eventType) {
             case "payment.failed", "payment.captured", "payment.authorized" -> {
@@ -78,13 +79,33 @@ public class WebhookProcessingService {
                     log.warn("Event {} had no payload.payment.entity node", eventType);
                     yield false;
                 }
-                paymentService.upsertFromRazorpayPayload(paymentEntity);
+                Payment payment = paymentService.upsertFromRazorpayPayload(paymentEntity);
+                handlePaymentStatusEffects(payment);
                 yield true;
             }
             default -> {
-                log.info("Unhandled event type (stored, not processed further): {}", eventType);
+                log.info(
+                        "Unhandled event type (stored, not processed further): {}",
+                        eventType
+                );
                 yield false;
             }
         };
+    }
+
+    /**
+     * The hook point where the Revenue Recovery Engine actually gets
+     * triggered: a payment landing on FAILED opens (or re-analyzes) a
+     * RecoveryCase; one landing on SUCCESS closes out any EXECUTED case
+     * that was waiting on it. PENDING/CREATED/REFUNDED payments don't
+     * currently drive any recovery-engine action.
+     */
+    private void handlePaymentStatusEffects(Payment payment) {
+        switch (payment.getStatus()) {
+            case FAILED -> recoveryService.createCaseForFailedPayment(payment);
+            case SUCCESS -> paymentOutcomeService.handlePaymentSuccess(payment);
+            default -> log.debug("Payment {} status {} triggers no recovery-engine action.",
+                    payment.getExternalPaymentId(), payment.getStatus());
+        }
     }
 }
