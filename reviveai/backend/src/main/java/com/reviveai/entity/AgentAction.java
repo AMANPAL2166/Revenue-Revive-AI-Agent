@@ -89,6 +89,27 @@ public class AgentAction {
     @Column(name = "suggested_delay_hours")
     private Integer suggestedDelayHours;
 
+    /**
+     * Same rationale as discountPercent/suggestedDelayHours above: the
+     * spec's Policy UI (section 21) and case-detail view (section 19)
+     * explicitly need to display *why* a policy decision was made and
+     * *what happened* when an action ran — neither is in the original
+     * field list, but both are read-only projections of data this class
+     * already computes in-memory (PolicyResult.reason, RecoveryResult),
+     * so persisting them here is the natural place.
+     */
+    @Column(name = "policy_reason", length = 500)
+    private String policyReason;
+
+    @Column(name = "execution_result_message", length = 500)
+    private String executionResultMessage;
+
+    @Column(name = "execution_success")
+    private Boolean executionSuccess;
+
+    @Column(name = "execution_simulated")
+    private Boolean executionSimulated;
+
     @PrePersist
     protected void onCreate() {
         if (this.proposedAt == null) {

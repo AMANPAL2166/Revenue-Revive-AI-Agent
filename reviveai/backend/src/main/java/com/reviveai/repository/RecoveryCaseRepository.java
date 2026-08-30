@@ -1,6 +1,7 @@
 package com.reviveai.repository;
 
 import com.reviveai.entity.RecoveryCase;
+import com.reviveai.enums.Priority;
 import com.reviveai.enums.RecoveryCaseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,12 +16,16 @@ public interface RecoveryCaseRepository extends JpaRepository<RecoveryCase, UUID
 
     Page<RecoveryCase> findByStatus(RecoveryCaseStatus status, Pageable pageable);
 
+    Page<RecoveryCase> findByPriority(Priority priority, Pageable pageable);
+
+    Page<RecoveryCase> findByStatusAndPriority(RecoveryCaseStatus status, Priority priority, Pageable pageable);
+
     List<RecoveryCase> findByCustomerId(UUID customerId);
 
-    boolean existsByCustomerIdAndStatus(
-            UUID customerId,
-            RecoveryCaseStatus status
-    );
+    /** Backs the dashboard summary: sums revenueAtRisk/expectedRecoveryValue across whichever statuses are "still open". */
+    List<RecoveryCase> findByStatusIn(Collection<RecoveryCaseStatus> statuses);
+
+    long countByStatus(RecoveryCaseStatus status);
 
     /**
      * Used by RecoveryService before creating a new case for a payment, to
@@ -31,4 +36,10 @@ public interface RecoveryCaseRepository extends JpaRepository<RecoveryCase, UUID
     Optional<RecoveryCase> findFirstByPaymentIdAndStatusIn(UUID paymentId, Collection<RecoveryCaseStatus> statuses);
 
     Optional<RecoveryCase> findFirstBySubscriptionIdAndStatusIn(UUID subscriptionId, Collection<RecoveryCaseStatus> statuses);
+
+    /**
+     * Backs the "previous successful recovery" positive signal in
+     * RevenueRiskService's recovery-probability heuristic.
+     */
+    boolean existsByCustomerIdAndStatus(UUID customerId, RecoveryCaseStatus status);
 }

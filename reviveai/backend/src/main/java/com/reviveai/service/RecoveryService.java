@@ -9,6 +9,7 @@ import com.reviveai.entity.Payment;
 import com.reviveai.entity.RecoveryCase;
 import com.reviveai.enums.ActionType;
 import com.reviveai.enums.PolicyStatus;
+import com.reviveai.enums.Priority;
 import com.reviveai.enums.RecoveryCaseStatus;
 import com.reviveai.exception.ResourceNotFoundException;
 import com.reviveai.policy.PolicyEngine;
@@ -22,6 +23,8 @@ import com.reviveai.repository.RecoveryCaseRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -143,6 +146,7 @@ public class RecoveryService {
         PolicyResult policyResult = policyEngine.evaluate(policyContext);
 
         agentAction.setPolicyStatus(policyResult.getStatus());
+        agentAction.setPolicyReason(policyResult.getReason());
         agentActionRepository.save(agentAction);
 
         if (policyResult.isAllowed()) {
@@ -218,6 +222,9 @@ public class RecoveryService {
         RecoveryResult result = recoveryActionExecutor.execute(ctx);
 
         agentAction.setExecutedAt(Instant.now());
+        agentAction.setExecutionResultMessage(result.getMessage());
+        agentAction.setExecutionSuccess(result.isSuccess());
+        agentAction.setExecutionSimulated(result.isSimulated());
         agentActionRepository.save(agentAction);
 
         // ESCALATE_TO_HUMAN's "execution" IS routing to a human — it never
@@ -239,6 +246,28 @@ public class RecoveryService {
             throw new ResourceNotFoundException("No AgentAction found for RecoveryCase: " + recoveryCaseId);
         }
         return actions.get(actions.size() - 1);
+    }
+
+    // ---- POST /recovery-cases/{id}/analyze (manual re-trigger by id) ----
+
+    @Transactional
+    public RecoveryCase analyzeById(UUID recoveryCaseId) {
+        return analyze(getById(recoveryCaseId));
+    }
+
+    // ---- GET /recovery-cases (list, optionally filtered) ----
+
+    public Page<RecoveryCase> list(RecoveryCaseStatus status, Priority priority, Pageable pageable) {
+        if (status != null && priority != null) {
+            return recoveryCaseRepository.findByStatusAndPriority(status, priority, pageable);
+        }
+        if (status != null) {
+            return recoveryCaseRepository.findByStatus(status, pageable);
+        }
+        if (priority != null) {
+            return recoveryCaseRepository.findByPriority(priority, pageable);
+        }
+        return recoveryCaseRepository.findAll(pageable);
     }
 
     public RecoveryCase getById(UUID id) {
