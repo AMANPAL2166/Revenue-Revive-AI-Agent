@@ -23,6 +23,7 @@ public class ReviveAiProperties {
     private final Razorpay razorpay = new Razorpay();
     private final Llm llm = new Llm();
     private final Policy policy = new Policy();
+    private final Frontend frontend = new Frontend();
 
     @Getter
     @Setter
@@ -56,5 +57,12 @@ public class ReviveAiProperties {
         private BigDecimal highValuePaymentThreshold = BigDecimal.valueOf(50000);
         private boolean highValueActionsRequireHumanApproval = true;
         private boolean refundRequiresHumanApproval = true;
+    }
+
+    @Getter
+    @Setter
+    public static class Frontend {
+        /** The Vite dev server origin by default; override via CORS_ALLOWED_ORIGIN in production. */
+        private String origin = "http://localhost:5173";
     }
 }
