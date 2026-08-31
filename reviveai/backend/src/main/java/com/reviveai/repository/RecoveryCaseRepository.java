@@ -5,6 +5,7 @@ import com.reviveai.enums.Priority;
 import com.reviveai.enums.RecoveryCaseStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -13,33 +14,56 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RecoveryCaseRepository extends JpaRepository<RecoveryCase, UUID> {
+    @EntityGraph(attributePaths = {
+            "customer",
+            "customer.successfulPayments",
+            "payment"
+    })
+    @Override
+    Optional<RecoveryCase> findById(UUID id);
 
-    Page<RecoveryCase> findByStatus(RecoveryCaseStatus status, Pageable pageable);
+    @EntityGraph(attributePaths = {"customer"})
+    Page<RecoveryCase> findByStatus(
+            RecoveryCaseStatus status,
+            Pageable pageable
+    );
 
-    Page<RecoveryCase> findByPriority(Priority priority, Pageable pageable);
+    @EntityGraph(attributePaths = {"customer"})
+    Page<RecoveryCase> findByPriority(
+            Priority priority,
+            Pageable pageable
+    );
 
-    Page<RecoveryCase> findByStatusAndPriority(RecoveryCaseStatus status, Priority priority, Pageable pageable);
+    @EntityGraph(attributePaths = {"customer"})
+    Page<RecoveryCase> findByStatusAndPriority(
+            RecoveryCaseStatus status,
+            Priority priority,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"customer"})
+    Page<RecoveryCase> findAll(Pageable pageable);
 
     List<RecoveryCase> findByCustomerId(UUID customerId);
 
-    /** Backs the dashboard summary: sums revenueAtRisk/expectedRecoveryValue across whichever statuses are "still open". */
-    List<RecoveryCase> findByStatusIn(Collection<RecoveryCaseStatus> statuses);
+    List<RecoveryCase> findByStatusIn(
+            Collection<RecoveryCaseStatus> statuses
+    );
 
     long countByStatus(RecoveryCaseStatus status);
 
-    /**
-     * Used by RecoveryService before creating a new case for a payment, to
-     * avoid opening a second concurrent case for the same failed payment
-     * when a webhook is (safely, non-duplicate) re-delivered for a related
-     * event, or when a retry itself fails again.
-     */
-    Optional<RecoveryCase> findFirstByPaymentIdAndStatusIn(UUID paymentId, Collection<RecoveryCaseStatus> statuses);
+    Optional<RecoveryCase> findFirstByPaymentIdAndStatusIn(
+            UUID paymentId,
+            Collection<RecoveryCaseStatus> statuses
+    );
 
-    Optional<RecoveryCase> findFirstBySubscriptionIdAndStatusIn(UUID subscriptionId, Collection<RecoveryCaseStatus> statuses);
+    Optional<RecoveryCase> findFirstBySubscriptionIdAndStatusIn(
+            UUID subscriptionId,
+            Collection<RecoveryCaseStatus> statuses
+    );
 
-    /**
-     * Backs the "previous successful recovery" positive signal in
-     * RevenueRiskService's recovery-probability heuristic.
-     */
-    boolean existsByCustomerIdAndStatus(UUID customerId, RecoveryCaseStatus status);
+    boolean existsByCustomerIdAndStatus(
+            UUID customerId,
+            RecoveryCaseStatus status
+    );
 }

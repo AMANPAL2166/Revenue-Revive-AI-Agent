@@ -63,6 +63,8 @@ public class RecoveryCaseDetailResponse {
                         .action(latest.getActionType())
                         .confidence(latest.getConfidence())
                         .reasoning(latest.getReasoning())
+                        .discountPercent(latest.getDiscountPercent())
+                        .suggestedDelayHours(latest.getSuggestedDelayHours())
                         .build())
                 .policyDecision(latest == null ? null : PolicyDecisionResponse.builder()
                         .status(latest.getPolicyStatus())
