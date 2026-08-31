@@ -1,29 +1,64 @@
 version: "3.9"
 
-# Day 1 scope: Postgres only, so the backend has something to connect to
-# while entities/repositories are built and verified locally.
-# The `backend` and `frontend` services (with their Dockerfiles) are added
-# in the Day 10 phase per the implementation sequence, turning this into
-# the full `docker compose up` one-command setup.
+# The complete stack: MySQL + Spring Boot backend + React frontend.
+# `docker compose up --build` is the one-command setup the spec asks for.
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: reviveai-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: reviveai-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-reviveai}
-      POSTGRES_USER: ${POSTGRES_USER:-reviveai}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-reviveai}
+      MYSQL_USER: ${MYSQL_USER:-reviveai}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-changeme_root}
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - reviveai_pg_data:/var/lib/postgresql/data
+      - reviveai_mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reviveai} -d ${POSTGRES_DB:-reviveai}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-changeme_root}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+    container_name: reviveai-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-reviveai}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DATABASE_USERNAME: ${MYSQL_USER:-reviveai}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-sonnet-5}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DEMO_RETRY_DELAY_SECONDS: ${DEMO_RETRY_DELAY_SECONDS:-30}
+      DEMO_REMINDER_DELAY_SECONDS: ${DEMO_REMINDER_DELAY_SECONDS:-20}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-demo}
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+    container_name: reviveai-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
 volumes:
-  reviveai_pg_data:
+  reviveai_mysql_data:
