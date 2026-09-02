@@ -49,11 +49,17 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
-        // e.g. "Only cases in HUMAN_REVIEW can be approved." — a valid
-        // request that conflicts with the resource's current state, hence
-        // 409 rather than 400.
-        return build(HttpStatus.CONFLICT, "INVALID_STATE", ex.getMessage(), null);
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(
+            IllegalStateException ex
+    ) {
+        log.warn("Invalid application state: {}", ex.getMessage(), ex);
+
+        return build(
+                HttpStatus.CONFLICT,
+                "INVALID_STATE",
+                ex.getMessage(),
+                null
+        );
     }
 
     @ExceptionHandler(Exception.class)

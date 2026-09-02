@@ -44,6 +44,8 @@ public class ReviveAiProperties {
     @Getter
     @Setter
     public static class Llm {
+        /** "anthropic" (default) or "groq" — selects the AiClient implementation in AiClientConfig. */
+        private String provider = "anthropic";
         private String apiKey;
         private String model;
     }

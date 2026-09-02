@@ -3,9 +3,9 @@ spring:
     name: reviveai-backend
 
   datasource:
-    url: jdbc:mysql://localhost:3306/reviveai
-    username: reviveai
-    password: changeme
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/reviveai?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DATABASE_USERNAME:reviveai}
+    password: ${DATABASE_PASSWORD:changeme}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -14,6 +14,7 @@ spring:
       # A real production setup should replace this with Flyway/Liquibase
       # migrations (see README "Future Improvements").
       ddl-auto: update
+    database-platform: org.hibernate.dialect.MySQLDialect
     show-sql: false
     properties:
       hibernate:
@@ -50,8 +51,9 @@ reviveai:
     key-secret: ${RAZORPAY_KEY_SECRET:}
     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
   llm:
+    provider: ${LLM_PROVIDER:anthropic}
     api-key: ${LLM_API_KEY:}
-    model: ${LLM_MODEL:claude-sonnet-4-6}
+    model: ${LLM_MODEL:openai/gpt-oss-20b}
   policy:
     max-discount-percent: 10
     max-automatic-refund-amount: 2000
@@ -59,6 +61,8 @@ reviveai:
     high-value-payment-threshold: 50000
     high-value-actions-require-human-approval: true
     refund-requires-human-approval: true
+  frontend:
+    origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
 
 logging:
   level:

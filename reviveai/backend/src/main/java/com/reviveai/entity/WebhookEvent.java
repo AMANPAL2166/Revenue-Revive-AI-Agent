@@ -53,7 +53,7 @@ public class WebhookEvent {
     private String eventType;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String payload;
 
     @Column(nullable = false)
